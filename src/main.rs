@@ -1,4 +1,4 @@
-mod kociemba_coordinate_test;
+use num_integer::binomial;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Corner {
@@ -48,6 +48,10 @@ impl CubieCube {
         ep: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11],
         eo: [0; 12],
     };
+    
+    pub const fn new() -> Self {
+        Self::SOLVED
+    }
 
     // Up Move
     pub const U: CubieCube = CubieCube {
@@ -198,6 +202,71 @@ impl CubieCube {
     }
 }
 
+impl CubieCube {
+    /// Inverse Twist: Creates a cube with the specified Corner Orientation (0..2186)
+    pub fn set_twist(mut twist: u16) -> Self {
+        let mut cc = CubieCube::SOLVED;
+        let mut sum_twist = 0;
+        
+        // We set corners URF(0) through DBL(6)
+        // Iterate in reverse (6 down to 0) to match the "get_twist" base-3 logic
+        for i in (0..7).rev() {
+            let val = (twist % 3) as u8;
+            twist /= 3;
+            cc.co[i] = val;
+            sum_twist += val;
+        }
+        
+        // The last corner (DRB/7) is determined by parity: sum must be divisible by 3
+        cc.co[7] = (3 - (sum_twist % 3)) % 3;
+        cc
+    }
+
+    /// Inverse Flip: Creates a cube with the specified Edge Orientation (0..2047)
+    pub fn set_flip(mut flip: u16) -> Self {
+        let mut cc = CubieCube::SOLVED;
+        let mut sum_flip = 0;
+
+        // Set edges 0..10. The 11th is determined by parity.
+        for i in (0..11).rev() {
+            let val = (flip % 2) as u8;
+            flip /= 2;
+            cc.eo[i] = val;
+            sum_flip += val;
+        }
+
+        // The last edge (BR/11) must make total orientation even
+        cc.eo[11] = (2 - (sum_flip % 2)) % 2;
+        cc
+    }
+
+    /// Inverse Slice: Places the 4 slice edges (FR,FL,BL,BR) based on the index (0..494)
+    pub fn set_slice_sorted(mut idx: u16) -> Self {
+        let mut cc = CubieCube::SOLVED;
+        
+        // Slice edges (indices 8,9,10,11) and Non-slice edges (0..7)
+        // We use arrays to pop available pieces into the positions.
+        let mut slice_edges = [8, 9, 10, 11];
+        let mut other_edges = [0, 1, 2, 3, 4, 5, 6, 7];
+        let mut k = 4; // Number of slice edges to place
+
+        // Scan positions from 11 down to 0
+        for n in (0..12).rev() {
+            if idx >= C_NK[n][k] {
+                // Case: Position n IS a slice edge
+                cc.ep[n] = slice_edges[k - 1]; // Place a slice edge here
+                idx -= C_NK[n][k];
+                k -= 1;
+            } else {
+                // Case: Position n is NOT a slice edge
+                // We use the (n - k) index to pick from remaining others
+                cc.ep[n] = other_edges[n - k];
+            }
+        }
+        cc
+    }
+}
+
 /// Represents the 18 possible moves in Half-Turn Metric
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Move {
@@ -245,35 +314,28 @@ impl Move {
             },
 
             // Inverse turns (Prime moves)
-            // Note: U3 = U * U2 is faster than U * U * U
             Move::U3 | Move::R3 | Move::F3 | Move::D3 | Move::L3 | Move::B3 => {
                 base.multiply(&base.multiply(&base))
             }
         }
     }
 }
-// Precomputed Binomial Coefficients (n choose k)
-// We need this to calculate the Slice coordinate efficiently.
-const C_NK: [[u16; 5]; 12] = {
-    let mut c = [[0; 5]; 12];
-    let mut n = 0;
-    while n < 12 {
-        let mut k = 0;
-        while k <= 4 {
-            // We only need up to k=4 for the 4 slice edges
-            if k == 0 {
-                c[n][k] = 1;
-            } else if n == 0 {
-                c[n][k] = 0;
-            } else {
-                c[n][k] = c[n - 1][k - 1] + c[n - 1][k];
-            }
-            k += 1;
-        }
-        n += 1;
-    }
-    c
-};
+
+// Precomputed Binomial Coefficients (n choose k) for the Slice coordinate
+const C_NK: [[u16; 5]; 12] = [
+    [1, 0, 0, 0, 0],
+    [1, 1, 0, 0, 0],
+    [1, 2, 1, 0, 0],
+    [1, 3, 3, 1, 0],
+    [1, 4, 6, 4, 1],
+    [1, 5, 10, 10, 5],
+    [1, 6, 15, 20, 15],
+    [1, 7, 21, 35, 35],
+    [1, 8, 28, 56, 70],
+    [1, 9, 36, 84, 126],
+    [1, 10, 45, 120, 210],
+    [1, 11, 55, 165, 330]
+];
 
 pub struct PruningTables {
     pub twist_move: Vec<Vec<u16>>, // [2187][18]
@@ -302,5 +364,5 @@ impl PruningTables {
 }
 
 fn main() {
-    println!("Hello World!");
+    println!("asd");
 }

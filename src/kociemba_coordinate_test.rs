@@ -1,3 +1,7 @@
+// TODO:: Verify all 6 generating moves
+// TODO:: Let this be its own crate
+// https://kociemba.org/math/coordlevel.htm
+
 #[cfg(test)]
 mod tests {
     #[derive(Debug, Clone, Copy, PartialEq, Eq)]
