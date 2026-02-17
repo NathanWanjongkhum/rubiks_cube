@@ -11,7 +11,7 @@ const C_NK: [[u16; 5]; 12] = [
     [1, 8, 28, 56, 70],
     [1, 9, 36, 84, 126],
     [1, 10, 45, 120, 210],
-    [1, 11, 55, 165, 330]
+    [1, 11, 55, 165, 330],
 ];
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -62,12 +62,12 @@ impl CubieCube {
         ep: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11],
         eo: [0; 12],
     };
-    
+
     pub const fn new() -> Self {
         Self::SOLVED
     }
 
-    // Up Move
+    // Up Turn
     pub const U: CubieCube = CubieCube {
         cp: [3, 0, 1, 2, 4, 5, 6, 7],
         co: [0, 0, 0, 0, 0, 0, 0, 0],
@@ -75,15 +75,15 @@ impl CubieCube {
         eo: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
     };
 
-    // Right Move
+    // Right Turn
     pub const R: CubieCube = CubieCube {
-        cp: [4, 1, 2, 0, 7, 5, 6, 3], // Corner Permutation
-        co: [2, 0, 0, 1, 1, 0, 0, 2], // Corner Orientation changes (+1/-1)
+        cp: [4, 1, 2, 0, 7, 5, 6, 3],               // Corner Permutation
+        co: [2, 0, 0, 1, 1, 0, 0, 2],               // Corner Orientation changes (+1/-1)
         ep: [0, 1, 2, 3, 11, 5, 6, 7, 4, 9, 10, 8], // Edge Permutation
         eo: [0; 12], // Edges on L/R don't flip in this specific axis definition
     };
 
-    // Front Move
+    // Front Turn
     pub const F: CubieCube = CubieCube {
         cp: [1, 5, 2, 3, 0, 4, 6, 7],
         co: [1, 2, 0, 0, 2, 1, 0, 0],
@@ -91,7 +91,7 @@ impl CubieCube {
         eo: [0, 1, 0, 0, 0, 1, 0, 0, 1, 1, 0, 0], // F/B moves flip edges
     };
 
-    // Down Move
+    // Down Turn
     pub const D: CubieCube = CubieCube {
         cp: [0, 1, 2, 3, 5, 6, 7, 4],
         co: [0; 8],
@@ -99,7 +99,7 @@ impl CubieCube {
         eo: [0; 12],
     };
 
-    // Left Move
+    // Left Turn
     pub const L: CubieCube = CubieCube {
         cp: [0, 2, 6, 3, 4, 1, 5, 7],
         co: [0, 1, 2, 0, 0, 2, 1, 0],
@@ -107,7 +107,7 @@ impl CubieCube {
         eo: [0; 12],
     };
 
-    // Back Move
+    // Back Turn
     pub const B: CubieCube = CubieCube {
         cp: [0, 1, 3, 7, 4, 5, 2, 6],
         co: [0, 0, 1, 2, 0, 0, 2, 1],
@@ -221,7 +221,7 @@ impl CubieCube {
     pub fn set_twist(mut twist: u16) -> Self {
         let mut cc = CubieCube::SOLVED;
         let mut sum_twist = 0;
-        
+
         // We set corners URF(0) through DBL(6)
         // Iterate in reverse (6 down to 0) to match the "get_twist" base-3 logic
         for i in (0..7).rev() {
@@ -230,7 +230,7 @@ impl CubieCube {
             cc.co[i] = val;
             sum_twist += val;
         }
-        
+
         // The last corner (DRB/7) is determined by parity: sum must be divisible by 3
         cc.co[7] = (3 - (sum_twist % 3)) % 3;
         cc
@@ -257,7 +257,7 @@ impl CubieCube {
     /// Inverse Slice: Places the 4 slice edges (FR,FL,BL,BR) based on the index (0..494)
     pub fn set_slice_sorted(mut idx: u16) -> Self {
         let mut cc = CubieCube::SOLVED;
-        
+
         // Slice edges (indices 8,9,10,11) and Non-slice edges (0..7)
         // We use arrays to pop available pieces into the positions.
         let slice_edges = [8, 9, 10, 11];
