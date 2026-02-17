@@ -14,6 +14,9 @@ const C_NK: [[u16; 5]; 12] = [
     [1, 11, 55, 165, 330],
 ];
 
+// Precomputed Factorials (0! to 7!)
+const FACTORIALS_7: [usize; 8] = [1, 1, 2, 6, 24, 120, 720, 5040];
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Corner {
     URF,
@@ -277,6 +280,147 @@ impl CubieCube {
                 cc.ep[n] = other_edges[n - k];
             }
         }
+        cc
+    }
+}
+
+impl CubieCube {
+    ///
+    /// Phase 2 methods
+    ///
+    /// Corner Permutation Coordinate (0..40319)
+    /// Standard Lehmer code for 8 items.
+    pub fn get_corner_perm(&self) -> usize {
+        let mut idx = 0;
+        let mut val = [0; 8];
+        // Copy cp array to mutable buffer
+        val.copy_from_slice(&self.cp);
+
+        for i in 0..7 {
+            let mut count = 0;
+            // Count how many pieces to the right are smaller
+            for j in (i + 1)..8 {
+                if val[j] < val[i] {
+                    count += 1;
+                }
+            }
+            idx = (idx + count) * (7 - i);
+        }
+        idx
+    }
+
+    /// Slice Permutation Coordinate (0..23)
+    /// Tracks the order of the 4 slice edges (FR, FL, BL, BR)
+    pub fn get_slice_perm(&self) -> usize {
+        let mut idx = 0;
+        let mut val = [0; 4];
+        let mut k = 0;
+
+        // Extract the 4 slice edges (indices 8..11 in standard notation)
+        // We assume slice edges are already IN the slice positions.
+        for i in 8..12 {
+            val[k] = self.ep[i];
+            k += 1;
+        }
+
+        // Lehmer code for 4 items
+        for i in 0..3 {
+            let mut count = 0;
+            for j in (i + 1)..4 {
+                if val[j] < val[i] {
+                    count += 1;
+                }
+            }
+            idx = (idx + count) * (3 - i);
+        }
+        idx
+    }
+
+    /// U/D Edge Permutation Coordinate (0..40319)
+    /// Tracks the order of the 8 U/D edges (UR, UF, UL, UB, DR, DF, DL, DB)
+    pub fn get_ud_edges(&self) -> usize {
+        let mut idx = 0;
+        let mut val = [0; 8];
+        let mut k = 0;
+
+        // Extract the first 8 edges
+        for i in 0..8 {
+            val[k] = self.ep[i];
+            k += 1;
+        }
+
+        // Lehmer code for 8 items
+        for i in 0..7 {
+            let mut count = 0;
+            for j in (i + 1)..8 {
+                if val[j] < val[i] {
+                    count += 1;
+                }
+            }
+            idx = (idx + count) * (7 - i);
+        }
+        idx
+    }
+}
+
+impl CubieCube {
+    ///
+    /// Inverse Phase 2:
+    ///
+    /// Reconstructs Corner Permutation from index (0..40319)
+    pub fn set_corner_perm(mut idx: usize) -> Self {
+        let mut cc = CubieCube::SOLVED;
+        let mut available = vec![0, 1, 2, 3, 4, 5, 6, 7];
+
+        // Decode Lehmer code
+        for i in 0..7 {
+            let fact = FACTORIALS_7[7 - i];
+            let selected_idx = idx / fact;
+            idx %= fact;
+
+            // Pick the number at the selected index and remove it
+            cc.cp[i] = available.remove(selected_idx);
+        }
+        // Last element is the only one left
+        cc.cp[7] = available[0];
+        cc
+    }
+
+    /// Reconstructs U/D Edge Permutation from index (0..40319)
+    /// Sets edges 0..7 (UR, UF, UL, UB, DR, DF, DL, DB)
+    pub fn set_ud_edges(mut idx: usize) -> Self {
+        let mut cc = CubieCube::SOLVED;
+        let mut available = vec![0, 1, 2, 3, 4, 5, 6, 7];
+
+        for i in 0..7 {
+            let fact = FACTORIALS_7[7 - i];
+            let selected_idx = idx / fact;
+            idx %= fact;
+
+            cc.ep[i] = available.remove(selected_idx);
+        }
+        cc.ep[7] = available[0];
+        cc
+    }
+
+    /// Reconstructs Slice Permutation from index (0..23)
+    /// Sets slice edges 8..11 (FR, FL, BL, BR)
+    pub fn set_slice_perm(mut idx: usize) -> Self {
+        let mut cc = CubieCube::SOLVED;
+        let mut available = vec![8, 9, 10, 11]; // The slice edge indices
+
+        // 4 items means we use factorials 3!, 2!, 1!
+        let facts = [6, 2, 1];
+
+        for i in 0..3 {
+            let fact = facts[i];
+            let selected_idx = idx / fact;
+            idx %= fact;
+
+            // Map the slice position (8+i) to the chosen piece
+            cc.ep[8 + i] = available.remove(selected_idx);
+        }
+        cc.ep[11] = available[0];
         cc
     }
 }
