@@ -1,6 +1,6 @@
-use crate::cubie::CubieCube;
-use crate::move_table::PruningTables;
-use crate::moves::{Move, Turn};
+use crate::cubie_cube::CubieCube;
+use crate::pruning_table::PruningTables;
+use crate::turn::Turn;
 
 pub struct Solver<'a> {
     tables: &'a PruningTables,
@@ -35,10 +35,10 @@ impl<'a> Solver<'a> {
         }
     }
 
-    fn format_solution(&self, moves: &[Move]) -> String {
+    fn format_solution(&self, moves: &[Turn]) -> String {
         moves
             .iter()
-            .map(|m| format!("{:?}", m)) // Assumes Debug impl for Move (e.g., "R2")
+            .map(|m| format!("{:?}", m))
             .collect::<Vec<_>>()
             .join(" ")
     }
@@ -50,8 +50,8 @@ impl<'a> Solver<'a> {
         cube: &CubieCube,
         g: u8,                         // Cost so far (depth)
         bound: u8,                     // Max allowed depth
-        path: &mut Vec<Move>,          // Current path
-        full_solution: &mut Vec<Move>, // Output storage
+        path: &mut Vec<Turn>,          // Current path
+        full_solution: &mut Vec<Turn>, // Output storage
     ) -> bool {
         // Calculate Heuristic (h)
         // How far are we from the G_1 subgroup?
@@ -88,22 +88,69 @@ impl<'a> Solver<'a> {
         }
 
         // Branching
-        let last_move = path.last().cloned().unwrap_or(Move::NULL);
+        let last_move = path.last().cloned();
 
-        for &m in Turn::ALL {
-            // Apply Redundancy Checks (The 13-branching optimization)
-            if !crate::moves::is_move_allowed(m, last_move) {
+        for m in Turn::ALL {
+            // Apply Redundancy Checks (Reduce to 13-branches)
+            if !crate::turn::is_move_allowed(m, last_move) {
                 continue;
             }
 
-            // Execute Move
-            // Optimization: Instead of full multiplication, use move tables!
-            // But for now, let's trust the compiler or use the full multiply for correctness.
-            // Using full multiply is safer for the "Phase 1 to Phase 2" handoff correctness.
+            // Execute Turn
             let next_cube = cube.multiply(&m.to_cubie());
 
             path.push(m);
             if self.phase1_search(&next_cube, g + 1, bound, path, full_solution) {
+                return true;
+            }
+            path.pop();
+        }
+
+        false
+    }
+
+    fn phase2_search(
+        &mut self,
+        cube: &CubieCube,
+        g: u8,
+        bound: u8,
+        path: &mut Vec<Turn>, // This path continues from Phase 1
+        full_solution: &mut Vec<Turn>,
+    ) -> bool {
+        // Calculate Phase 2 Heuristic
+        let cp = cube.get_corner_perm();
+        let ud = cube.get_ud_edges();
+        let slice = cube.get_slice_perm();
+
+        let dist_cp = self.tables.corner_slice_pruning.get(cp * 24 + slice);
+        let dist_ud = self.tables.ud_edge_slice_pruning.get(ud * 24 + slice);
+
+        let h = std::cmp::max(dist_cp, dist_ud);
+
+        if g + h > bound {
+            return false;
+        }
+
+        // If h == 0 (and checking raw state ensures no collisions), found path
+        if cp == 0 && ud == 0 && slice == 0 {
+            // Solution Found
+            *full_solution = path.clone();
+            return true;
+        }
+
+        let last_move = path.last().cloned();
+
+        // 3. Branching (G1 Moves Only)
+        // U, U2, U3, D, D2, D3, R2, L2, F2, B2
+        for &m in Turn::PHASE2_MOVES.iter() {
+            if !crate::turn::is_move_allowed(m, last_move) {
+                continue;
+            }
+
+            let next_cube = cube.multiply(&m.to_cubie());
+
+            path.push(m);
+            if self.phase2_search(&next_cube, g + 1, bound, path, full_solution) {
                 return true;
             }
             path.pop();

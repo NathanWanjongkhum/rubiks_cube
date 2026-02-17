@@ -45,6 +45,19 @@ impl Turn {
         Turn::B3,
     ];
 
+    pub const PHASE2_MOVES: [Turn; 10] = [
+        Turn::U,
+        Turn::U2,
+        Turn::U3,
+        Turn::D,
+        Turn::D2,
+        Turn::D3,
+        Turn::R2,
+        Turn::L2,
+        Turn::F2,
+        Turn::B2,
+    ];
+
     /// Returns the CubieCube representation for ANY move.
     /// This generalizes the logic: Base moves are looked up,
     /// Derived moves (X2, X') are calculated via group multiplication.
@@ -94,11 +107,15 @@ impl Turn {
     }
 }
 
-/// Checks if `current_move` is redundant given the `last_move`.
 /// Returns TRUE if the move is allowed (valid).
-pub fn is_move_allowed(current_move: Turn, last_move: Turn) -> bool {
+pub fn is_move_allowed(current_move: Turn, last: Option<Turn>) -> bool {
+    let last_turn = match last {
+        Some(t) => t,
+        None => return true,
+    };
+
     let curr_face = current_move.face();
-    let last_face = last_move.face();
+    let last_face = last_turn.face();
 
     // Don't move the same face twice (e.g., F F)
     if curr_face == last_face {
@@ -107,7 +124,7 @@ pub fn is_move_allowed(current_move: Turn, last_move: Turn) -> bool {
 
     // Commutative Redundancy (Opposite Faces)
     // Check if they are on the same axis (e.g., U and D)
-    if current_move.axis() == last_move.axis() {
+    if current_move.axis() == last_turn.axis() {
         // We strictly enforce an order: Upper Index must come BEFORE Lower Index.
         // If we try to do (Lower Index) -> (Upper Index), we allow it.
         // If we try to do (Upper Index) -> (Lower Index), we BLOCK it.

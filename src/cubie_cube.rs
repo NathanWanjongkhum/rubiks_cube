@@ -1,3 +1,7 @@
+use crate::{turn::Turn, turn::is_move_allowed};
+
+use rand::seq::IndexedRandom;
+
 // Precomputed Binomial Coefficients (n choose k) for the Slice coordinate
 const C_NK: [[u16; 5]; 12] = [
     [1, 0, 0, 0, 0],
@@ -68,6 +72,27 @@ impl CubieCube {
 
     pub const fn new() -> Self {
         Self::SOLVED
+    }
+
+    /// Generates a fully scrambled cube using 30 random valid moves.
+    pub fn scramble(&mut self) {
+        let mut cube = CubieCube::SOLVED;
+        let mut rng = rand::rng();
+        let mut last_move: Option<Turn> = None;
+        let mut moves_count = 0;
+
+        while moves_count < 30 {
+            // Pick a random move from the 18 available
+            let candidate = *Turn::ALL.choose(&mut rng).unwrap();
+
+            // Only apply if it doesn't violate redundancy rules
+            // (e.g. no "F F", no "U D U")
+            if is_move_allowed(candidate, last_move) {
+                *self = self.multiply(&candidate.to_cubie());
+                last_move = Some(candidate);
+                moves_count += 1;
+            }
+        }
     }
 
     // Up Turn

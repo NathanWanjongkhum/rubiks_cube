@@ -5,3 +5,4 @@ edition = "2024"
 
 [dependencies]
 num-integer = "0.1.46"
+rand = "0.10.0"
