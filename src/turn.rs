@@ -1,5 +1,7 @@
 use crate::cubie_cube::CubieCube;
 
+use std::fmt;
+
 /// Represents the 18 possible moves in Half-Turn Metric
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Turn {
@@ -21,6 +23,32 @@ pub enum Turn {
     B,
     B2,
     B3,
+}
+
+impl fmt::Display for Turn {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let s = match self {
+            Turn::U => "U",
+            Turn::U2 => "U2",
+            Turn::U3 => "U'",
+            Turn::D => "D",
+            Turn::D2 => "D2",
+            Turn::D3 => "D'",
+            Turn::R => "R",
+            Turn::R2 => "R2",
+            Turn::R3 => "R'",
+            Turn::L => "L",
+            Turn::L2 => "L2",
+            Turn::L3 => "L'",
+            Turn::F => "F",
+            Turn::F2 => "F2",
+            Turn::F3 => "F'",
+            Turn::B => "B",
+            Turn::B2 => "B2",
+            Turn::B3 => "B'",
+        };
+        write!(f, "{}", s)
+    }
 }
 
 impl Turn {

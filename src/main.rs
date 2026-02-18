@@ -10,7 +10,15 @@ fn main() {
     let mut solver = Solver::new(&tables);
 
     let mut cube = CubieCube::new();
-    cube.scramble();
+    let scramble_moves = cube.scramble();
+
+    let scramble_str: String = scramble_moves
+        .iter()
+        .map(|m| m.to_string())
+        .collect::<Vec<_>>()
+        .join(" ");
+
+    println!("Scramble: {}", scramble_str);
 
     if let Some(solution) = solver.solve(&cube) {
         println!("Solve Order: {:#?}", solution);

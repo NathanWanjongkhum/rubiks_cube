@@ -75,24 +75,21 @@ impl CubieCube {
     }
 
     /// Generates a fully scrambled cube using 30 random valid moves.
-    pub fn scramble(&mut self) {
-        let mut cube = CubieCube::SOLVED;
+    pub fn scramble(&mut self) -> Vec<crate::turn::Turn> {
         let mut rng = rand::rng();
-        let mut last_move: Option<Turn> = None;
-        let mut moves_count = 0;
+        let mut last_move: Option<crate::turn::Turn> = None;
+        let mut history = Vec::new();
 
-        while moves_count < 30 {
-            // Pick a random move from the 18 available
-            let candidate = *Turn::ALL.choose(&mut rng).unwrap();
+        while history.len() < 30 {
+            let candidate = *crate::turn::Turn::ALL.choose(&mut rng).unwrap();
 
-            // Only apply if it doesn't violate redundancy rules
-            // (e.g. no "F F", no "U D U")
-            if is_move_allowed(candidate, last_move) {
+            if crate::turn::is_move_allowed(candidate, last_move) {
                 *self = self.multiply(&candidate.to_cubie());
                 last_move = Some(candidate);
-                moves_count += 1;
+                history.push(candidate);
             }
         }
+        history
     }
 
     // Up Turn
