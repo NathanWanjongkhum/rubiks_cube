@@ -65,6 +65,13 @@ impl<'a> Solver<'a> {
         // Use the maximum of the two pruning tables
         let h = std::cmp::max(dist_twist, dist_flip);
 
+        if g == 0 {
+            println!(
+                "Start Phase 1: Twist={}, Flip={}, Slice={}, h={}",
+                twist, flip, slice, h
+            );
+        }
+
         // IDA* Pruning Condition
         // f = g + h. If f > bound, this path is too long.
         if g + h > bound {
