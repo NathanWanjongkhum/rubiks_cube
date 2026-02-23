@@ -13,7 +13,7 @@ fn main() {
     let mut solver = Solver::new(&tables);
 
     let mut cube = CubieCube::new();
-    let scramble_moves = cube.scramble(2);
+    let scramble_moves = cube.scramble(5);
 
     let scramble_str: String = scramble_moves
         .iter()

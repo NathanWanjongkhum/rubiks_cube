@@ -85,7 +85,7 @@ impl<'a> Solver<'a> {
             // Phase 2 starts with the cube applied with current path.
             // We give it a generous bound (e.g., 10-12 moves) to finish.
 
-            let phase2_bound = self.max_length - g;
+            let phase2_bound = bound - g;
             if self.phase2_search(cube, 0, phase2_bound, path, full_solution) {
                 return true;
             }
