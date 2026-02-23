@@ -6,3 +6,5 @@ edition = "2024"
 [dependencies]
 num-integer = "0.1.46"
 rand = "0.10.0"
+rkyv = "0.8.15"
+serde = "1.0.228"

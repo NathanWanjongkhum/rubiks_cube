@@ -1,12 +1,17 @@
 use crate::cubie_cube::CubieCube;
 use crate::turn::Turn;
 
-use std::collections::VecDeque;
+use std::{ collections::VecDeque, fs::File, io::Read };
+use std::io::Write;
 
+use rkyv::{ Archive, Deserialize, Serialize };
+use rkyv::rancor::Error;
+
+#[derive(Archive, Serialize, Deserialize)]
 pub struct PruningTables {
     // Phase 1 Move Tables
     pub twist_move: Vec<Vec<u16>>, // [2187][18]
-    pub flip_move: Vec<Vec<u16>>,  // [2048][18]
+    pub flip_move: Vec<Vec<u16>>, // [2048][18]
     pub slice_move: Vec<Vec<u16>>, // [495][18]
 
     pub twist_slice_pruning: NibbleArray,
@@ -27,6 +32,34 @@ pub struct PruningTables {
 
 impl PruningTables {
     pub fn new() -> Self {
+        let cache_path = "pruning_tables.rkyv";
+
+        if let Ok(mut file) = File::open(cache_path) {
+            println!("Loading pruning tables from cache...");
+            let mut buffer = Vec::new();
+            if file.read_to_end(&mut buffer).is_ok() {
+                if let Ok(tables) = rkyv::from_bytes::<PruningTables, Error>(&buffer) {
+                    println!("Successfully loaded tables.");
+                    return tables;
+                }
+            }
+            println!("Cache corrupted or outdated. Regenerating...");
+        }
+
+        println!("Generating pruning tables from scratch...");
+        let tables = Self::generate();
+
+        println!("Saving pruning tables to disk...");
+        let bytes = rkyv::to_bytes::<Error>(&tables).expect("Failed to serialize tables");
+        if let Ok(mut file) = File::create(cache_path) {
+            let _ = file.write_all(&bytes);
+            println!("Saved tables to {}.", cache_path);
+        }
+
+        tables
+    }
+
+    fn generate() -> Self {
         // Start by creating transistion tables for the pruning tables
         let mut twist_move = vec![vec![0; 18]; 2187];
         let mut flip_move = vec![vec![0; 18]; 2048];
@@ -34,7 +67,9 @@ impl PruningTables {
 
         // Precompute the 18 Turn CubieCubes
         // We map the Enum 0..17 to actual CubieCube structs to avoid re-generating them in loops
-        let moves: Vec<CubieCube> = Turn::ALL.iter().map(|m| m.to_cubie()).collect();
+        let moves: Vec<CubieCube> = Turn::ALL.iter()
+            .map(|m| m.to_cubie())
+            .collect();
 
         // Generate Twist Turn Table (Size 2187 * 18)
         // The orientation is invarient so by the closure principle the last corner is entailed (3^7=2187).
@@ -77,13 +112,10 @@ impl PruningTables {
             2187,
             495,
             CubieCube::SOLVED.get_twist() as usize,
-            CubieCube::SOLVED.get_slice_sorted() as usize,
+            CubieCube::SOLVED.get_slice_sorted() as usize
         );
         println!("Twist-Slice States: {}", twist_slice_pruning.length);
-        println!(
-            "Twist-Slice Physical Bytes: {}",
-            twist_slice_pruning.data.len()
-        );
+        println!("Twist-Slice Physical Bytes: {}", twist_slice_pruning.data.len());
 
         let flip_slice_pruning = Self::generate_pruning_table(
             &flip_move,
@@ -91,13 +123,10 @@ impl PruningTables {
             2048,
             495,
             CubieCube::SOLVED.get_flip() as usize,
-            CubieCube::SOLVED.get_slice_sorted() as usize,
+            CubieCube::SOLVED.get_slice_sorted() as usize
         );
         println!("Flip-Slice States:  {}", flip_slice_pruning.length);
-        println!(
-            "Flip-Slice Physical Bytes:  {}",
-            flip_slice_pruning.data.len()
-        );
+        println!("Flip-Slice Physical Bytes:  {}", flip_slice_pruning.data.len());
 
         // Phase 2
         // For move tables, we calculate ALL 18 moves.
@@ -145,13 +174,17 @@ impl PruningTables {
 
         println!("Generating Phase 2 Pruning...");
 
-        let corner_slice_pruning =
-            Self::generate_phase2_pruning(&cp_move, &ep_slice_move, 40320, 24, 0, 0, &phase2_moves);
-        println!("Corner-Slice States:  {}", corner_slice_pruning.length);
-        println!(
-            "Corner-Slice Physical Bytes:  {}",
-            corner_slice_pruning.data.len()
+        let corner_slice_pruning = Self::generate_phase2_pruning(
+            &cp_move,
+            &ep_slice_move,
+            40320,
+            24,
+            0,
+            0,
+            &phase2_moves
         );
+        println!("Corner-Slice States:  {}", corner_slice_pruning.length);
+        println!("Corner-Slice Physical Bytes:  {}", corner_slice_pruning.data.len());
 
         let ud_edge_slice_pruning = Self::generate_phase2_pruning(
             &ud_edge_move,
@@ -160,13 +193,10 @@ impl PruningTables {
             24,
             0,
             0,
-            &phase2_moves,
+            &phase2_moves
         );
         println!("U/D Edge-Slice States:  {}", ud_edge_slice_pruning.length);
-        println!(
-            "U/D Edge-Slice Physical Bytes:  {}",
-            ud_edge_slice_pruning.data.len()
-        );
+        println!("U/D Edge-Slice Physical Bytes:  {}", ud_edge_slice_pruning.data.len());
 
         Self {
             twist_move,
@@ -188,11 +218,11 @@ impl PruningTables {
         num_states_1: usize,
         num_states_2: usize,
         start_idx_1: usize,
-        start_idx_2: usize,
+        start_idx_2: usize
     ) -> NibbleArray {
         let size = num_states_1 * num_states_2;
         // Initialize with 0xF (15), which represents "unvisited"
-        let mut table = NibbleArray::new(size, 0xF);
+        let mut table = NibbleArray::new(size, 0xf);
         let mut queue = VecDeque::new();
 
         // Initialize solved state (distance 0)
@@ -219,7 +249,7 @@ impl PruningTables {
                 let next_combined = next_1 * num_states_2 + next_2;
 
                 // Check if unvisited (0xF)
-                if table.get(next_combined) == 0xF {
+                if table.get(next_combined) == 0xf {
                     table.set(next_combined, dist + 1);
                     queue.push_back(next_combined);
                 }
@@ -235,9 +265,9 @@ impl PruningTables {
         size2: usize,
         start1: usize,
         start2: usize,
-        allowed_moves: &[usize],
+        allowed_moves: &[usize]
     ) -> NibbleArray {
-        let mut pruning = NibbleArray::new(size1 * size2, 0xF);
+        let mut pruning = NibbleArray::new(size1 * size2, 0xf);
         let mut queue = std::collections::VecDeque::new();
 
         let start_node = start1 * size2 + start2;
@@ -259,7 +289,7 @@ impl PruningTables {
                 let next2 = table2[idx2][m_idx] as usize;
                 let next_node = next1 * size2 + next2;
 
-                if pruning.get(next_node) == 0xF {
+                if pruning.get(next_node) == 0xf {
                     pruning.set(next_node, dist + 1);
                     queue.push_back(next_node);
                 }
@@ -269,7 +299,7 @@ impl PruningTables {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Clone, Archive, Serialize, Deserialize)]
 pub struct NibbleArray {
     pub data: Vec<u8>,
     pub length: usize,
@@ -281,7 +311,7 @@ impl NibbleArray {
         let num_bytes = (size + 1) / 2;
 
         // Pack the default value (e.g., 0xFF) into both nibbles
-        let packed = (default << 4) | (default & 0x0F);
+        let packed = (default << 4) | (default & 0x0f);
 
         Self {
             data: vec![packed; num_bytes],
@@ -295,10 +325,10 @@ impl NibbleArray {
         let byte = self.data[index / 2];
         if index % 2 == 0 {
             // Lower nibble
-            byte & 0x0F
+            byte & 0x0f
         } else {
             // Upper nibble
-            (byte >> 4) & 0x0F
+            (byte >> 4) & 0x0f
         }
     }
 
@@ -310,10 +340,10 @@ impl NibbleArray {
 
         if index % 2 == 0 {
             // Set lower nibble: Clear lower 4 bits, then OR in new value
-            self.data[byte_idx] = (current_byte & 0xF0) | (value & 0x0F);
+            self.data[byte_idx] = (current_byte & 0xf0) | (value & 0x0f);
         } else {
             // Set upper nibble: Clear upper 4 bits, then OR in new value shifted
-            self.data[byte_idx] = (current_byte & 0x0F) | (value << 4);
+            self.data[byte_idx] = (current_byte & 0x0f) | (value << 4);
         }
     }
 }
