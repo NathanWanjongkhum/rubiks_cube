@@ -1,9 +1,6 @@
-mod cubie_cube;
-mod pruning_table;
-mod solver;
-mod turn;
-
-use crate::{ cubie_cube::CubieCube, pruning_table::PruningTables, solver::Solver };
+use rubiks_cube::cubie_cube::CubieCube;
+use rubiks_cube::pruning_table::PruningTables;
+use rubiks_cube::solver::Solver;
 
 fn main() {
     let tables = PruningTables::new();
@@ -16,7 +13,7 @@ fn main() {
 
     // cube.apply_sequence(scramble_str).expect("Invalid scramble sequence");
 
-    let scramble_moves = cube.scramble(1);
+    let scramble_moves = cube.scramble(30);
 
     let scramble_str: String = scramble_moves
         .iter()
@@ -34,9 +31,9 @@ fn main() {
         verify_cube.apply_sequence(&solution).unwrap();
 
         if verify_cube == CubieCube::SOLVED {
-            println!("Verification: SUCCESS! Solution is 100% physically valid.");
+            println!("SUCCESS! Solution is valid.");
         } else {
-            println!("Verification: FAILED! State machine mismatch.");
+            println!("FAILED! State machine mismatch.");
         }
     }
 }

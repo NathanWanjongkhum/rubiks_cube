@@ -35,25 +35,25 @@ impl PruningTables {
         let cache_path = "pruning_tables.rkyv";
 
         if let Ok(mut file) = File::open(cache_path) {
-            println!("Loading pruning tables from cache...");
+            // println!("Loading pruning tables from cache...");
             let mut buffer = Vec::new();
             if file.read_to_end(&mut buffer).is_ok() {
                 if let Ok(tables) = rkyv::from_bytes::<PruningTables, Error>(&buffer) {
-                    println!("Successfully loaded tables.");
+                    // println!("Successfully loaded tables.");
                     return tables;
                 }
             }
-            println!("Cache corrupted or outdated. Regenerating...");
+            // println!("Cache corrupted or outdated. Regenerating...");
         }
 
-        println!("Generating pruning tables from scratch...");
+        // println!("Generating pruning tables from scratch...");
         let tables = Self::generate();
 
-        println!("Saving pruning tables to disk...");
+        // println!("Saving pruning tables to disk...");
         let bytes = rkyv::to_bytes::<Error>(&tables).expect("Failed to serialize tables");
         if let Ok(mut file) = File::create(cache_path) {
             let _ = file.write_all(&bytes);
-            println!("Saved tables to {}.", cache_path);
+            // println!("Saved tables to {}.", cache_path);
         }
 
         tables

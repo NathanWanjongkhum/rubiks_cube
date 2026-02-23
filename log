@@ -1,0 +1,9 @@
+v1
+solver_bench                     fastest       │ slowest       │ median        │ mean          │ samples │ iters
+├─ bench_hard_20_move_scramble   1.55 s        │ 2.313 s       │ 1.871 s       │ 1.831 s       │ 100     │ 100
+╰─ bench_simple_5_move_scramble  144 µs        │ 597.7 µs      │ 151 µs        │ 160.3 µs      │ 100     │ 100
+
+v2 (Accept first <= 21 move solution)
+solver_bench                     fastest       │ slowest       │ median        │ mean          │ samples │ iters
+├─ bench_hard_20_move_scramble   1.509 ms      │ 2.284 ms      │ 1.578 ms      │ 1.612 ms      │ 100     │ 100
+╰─ bench_simple_5_move_scramble  49.09 µs      │ 106.3 µs      │ 52.49 µs      │ 53.53 µs      │ 100     │ 100

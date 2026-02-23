@@ -4,7 +4,11 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+divan = "0.1.21"
 num-integer = "0.1.46"
 rand = "0.10.0"
 rkyv = "0.8.15"
-serde = "1.0.228"
+
+[[bench]]
+name = "solver_bench"
+harness = false
