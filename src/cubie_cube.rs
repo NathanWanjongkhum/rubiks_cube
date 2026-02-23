@@ -92,6 +92,14 @@ impl CubieCube {
         history
     }
 
+    pub fn apply_sequence(&mut self, sequence: &str) -> Result<(), String> {
+        for move_str in sequence.split_whitespace() {
+            let m: crate::turn::Turn = move_str.parse()?;
+            *self = self.multiply(&m.to_cubie());
+        }
+        Ok(())
+    }
+
     // Up Turn
     pub const U: CubieCube = CubieCube {
         cp: [3, 0, 1, 2, 4, 5, 6, 7],
@@ -107,7 +115,7 @@ impl CubieCube {
         ep: [8, 1, 2, 3, 11, 5, 6, 7, 4, 9, 10, 0],
         eo: [0; 12],
     };
-    
+
     // Front Turn
     pub const F: CubieCube = CubieCube {
         cp: [1, 5, 2, 3, 0, 4, 6, 7],

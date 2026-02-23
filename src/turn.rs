@@ -1,6 +1,7 @@
 use crate::cubie_cube::CubieCube;
 
 use std::fmt;
+use std::str::FromStr;
 
 /// Represents the 18 possible moves in Half-Turn Metric
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -48,6 +49,34 @@ impl fmt::Display for Turn {
             Turn::B3 => "B'",
         };
         write!(f, "{}", s)
+    }
+}
+
+impl FromStr for Turn {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "U" => Ok(Turn::U),
+            "U2" => Ok(Turn::U2),
+            "U'" | "U3" => Ok(Turn::U3),
+            "R" => Ok(Turn::R),
+            "R2" => Ok(Turn::R2),
+            "R'" | "R3" => Ok(Turn::R3),
+            "F" => Ok(Turn::F),
+            "F2" => Ok(Turn::F2),
+            "F'" | "F3" => Ok(Turn::F3),
+            "D" => Ok(Turn::D),
+            "D2" => Ok(Turn::D2),
+            "D'" | "D3" => Ok(Turn::D3),
+            "L" => Ok(Turn::L),
+            "L2" => Ok(Turn::L2),
+            "L'" | "L3" => Ok(Turn::L3),
+            "B" => Ok(Turn::B),
+            "B2" => Ok(Turn::B2),
+            "B'" | "B3" => Ok(Turn::B3),
+            _ => Err(format!("Invalid move: {}", s)),
+        }
     }
 }
 

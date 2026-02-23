@@ -38,7 +38,7 @@ impl<'a> Solver<'a> {
     fn format_solution(&self, moves: &[Turn]) -> String {
         moves
             .iter()
-            .map(|m| format!("{:?}", m))
+            .map(|m| m.to_string())
             .collect::<Vec<_>>()
             .join(" ")
     }
@@ -48,10 +48,10 @@ impl<'a> Solver<'a> {
     fn phase1_search(
         &mut self,
         cube: &CubieCube,
-        g: u8,                         // Cost so far (depth)
-        bound: u8,                     // Max allowed depth
-        path: &mut Vec<Turn>,          // Current path
-        full_solution: &mut Vec<Turn>, // Output storage
+        g: u8, // Cost so far (depth)
+        bound: u8, // Max allowed depth
+        path: &mut Vec<Turn>, // Current path
+        full_solution: &mut Vec<Turn> // Output storage
     ) -> bool {
         // Calculate Heuristic (h)
         // How far are we from the G_1 subgroup?
@@ -66,10 +66,7 @@ impl<'a> Solver<'a> {
         let h = std::cmp::max(dist_twist, dist_flip);
 
         if g == 0 {
-            println!(
-                "Start Phase 1: Twist={}, Flip={}, Slice={}, h={}",
-                twist, flip, slice, h
-            );
+            println!("Start Phase 1: Twist={}, Flip={}, Slice={}, h={}", twist, flip, slice, h);
         }
 
         // IDA* Pruning Condition
@@ -122,7 +119,7 @@ impl<'a> Solver<'a> {
         g: u8,
         bound: u8,
         path: &mut Vec<Turn>, // This path continues from Phase 1
-        full_solution: &mut Vec<Turn>,
+        full_solution: &mut Vec<Turn>
     ) -> bool {
         // Calculate Phase 2 Heuristic
         let cp = cube.get_corner_perm();
