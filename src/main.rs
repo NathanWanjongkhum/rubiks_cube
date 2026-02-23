@@ -1,12 +1,9 @@
-// Tests
-mod cycle_test;
-// Crates
 mod cubie_cube;
 mod pruning_table;
 mod solver;
 mod turn;
 
-use crate::{cubie_cube::CubieCube, pruning_table::PruningTables, solver::Solver};
+use crate::{ cubie_cube::CubieCube, pruning_table::PruningTables, solver::Solver };
 
 fn main() {
     let tables = PruningTables::new();

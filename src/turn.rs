@@ -139,7 +139,9 @@ impl Turn {
 pub fn is_move_allowed(current_move: Turn, last: Option<Turn>) -> bool {
     let last_turn = match last {
         Some(t) => t,
-        None => return true,
+        None => {
+            return true;
+        }
     };
 
     let curr_face = current_move.face();
@@ -163,4 +165,95 @@ pub fn is_move_allowed(current_move: Turn, last: Option<Turn>) -> bool {
     }
 
     true
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_all_move_cycles() {
+        for m in Turn::ALL {
+            let m_cubie = m.to_cubie();
+
+            let m2 = m_cubie.multiply(&m_cubie);
+
+            match m {
+                // Half-turns should equal to identity after exactly 2 actions
+                Turn::U2 | Turn::R2 | Turn::F2 | Turn::D2 | Turn::L2 | Turn::B2 => {
+                    assert_eq!(
+                        m2,
+                        CubieCube::SOLVED,
+                        "Half-turn {:?} failed the order-2 identity cycle test!",
+                        m
+                    );
+                }
+                // Quarter and Prime turns should equal to identity after 4 actions
+                _ => {
+                    let m4 = m2.multiply(&m2);
+                    assert_eq!(
+                        m4,
+                        CubieCube::SOLVED,
+                        "Quarter/Prime turn {:?} failed the order-4 identity cycle test!",
+                        m
+                    );
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn test_coordinate_bijection() {
+        // Coordinate encoding and decoding is symmetric
+        // for all 18 moves. This verifies the coordinate math.
+        for m in Turn::ALL {
+            let state = m.to_cubie();
+
+            // Phase 1 Bijection
+            let twist = state.get_twist();
+            assert_eq!(
+                CubieCube::set_twist(twist).co,
+                state.co,
+                "Twist coordinate symmetry failed for move {:?}",
+                m
+            );
+
+            let flip = state.get_flip();
+            assert_eq!(
+                CubieCube::set_flip(flip).eo,
+                state.eo,
+                "Flip coordinate symmetry failed for move {:?}",
+                m
+            );
+
+            // Phase 2 Bijection (Permutations are only valid inside G1 subgroup)
+            if Turn::PHASE2_MOVES.contains(&m) {
+                let cp = state.get_corner_perm();
+                assert_eq!(
+                    CubieCube::set_corner_perm(cp).cp,
+                    state.cp,
+                    "Corner Permutation symmetry failed for move {:?}",
+                    m
+                );
+
+                let ud = state.get_ud_edges();
+                let state_ud = CubieCube::set_ud_edges(ud);
+                assert_eq!(
+                    state_ud.ep[0..8],
+                    state.ep[0..8],
+                    "UD Edge Permutation symmetry failed for move {:?}",
+                    m
+                );
+
+                let slice = state.get_slice_perm();
+                let state_slice = CubieCube::set_slice_perm(slice);
+                assert_eq!(
+                    state_slice.ep[8..12],
+                    state.ep[8..12],
+                    "Slice Permutation symmetry failed for move {:?}",
+                    m
+                );
+            }
+        }
+    }
 }
