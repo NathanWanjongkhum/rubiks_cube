@@ -1,3 +1,6 @@
+// Tests
+mod cycle_test;
+// Crates
 mod cubie_cube;
 mod pruning_table;
 mod solver;
@@ -10,7 +13,7 @@ fn main() {
     let mut solver = Solver::new(&tables);
 
     let mut cube = CubieCube::new();
-    let scramble_moves = cube.scramble();
+    let scramble_moves = cube.scramble(2);
 
     let scramble_str: String = scramble_moves
         .iter()

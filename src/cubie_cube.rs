@@ -1,4 +1,4 @@
-use crate::{turn::Turn, turn::is_move_allowed};
+use crate::{ turn::Turn, turn::is_move_allowed };
 
 use rand::seq::IndexedRandom;
 
@@ -75,12 +75,12 @@ impl CubieCube {
     }
 
     /// Generates a fully scrambled cube using 30 random valid moves.
-    pub fn scramble(&mut self) -> Vec<crate::turn::Turn> {
+    pub fn scramble(&mut self, moves: usize) -> Vec<crate::turn::Turn> {
         let mut rng = rand::rng();
         let mut last_move: Option<crate::turn::Turn> = None;
         let mut history = Vec::new();
 
-        while history.len() < 30 {
+        while history.len() < moves {
             let candidate = *crate::turn::Turn::ALL.choose(&mut rng).unwrap();
 
             if crate::turn::is_move_allowed(candidate, last_move) {
@@ -100,20 +100,20 @@ impl CubieCube {
         eo: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
     };
 
-    // Right Turn
+    // Correct Right Turn
     pub const R: CubieCube = CubieCube {
-        cp: [4, 1, 2, 0, 7, 5, 6, 3],               // Corner Permutation
-        co: [2, 0, 0, 1, 1, 0, 0, 2],               // Corner Orientation changes (+1/-1)
-        ep: [0, 1, 2, 3, 11, 5, 6, 7, 4, 9, 10, 8], // Edge Permutation
-        eo: [0; 12], // Edges on L/R don't flip in this specific axis definition
+        cp: [4, 1, 2, 0, 7, 5, 6, 3],
+        co: [2, 0, 0, 1, 1, 0, 0, 2],
+        ep: [8, 1, 2, 3, 11, 5, 6, 7, 4, 9, 10, 0],
+        eo: [0; 12],
     };
-
+    
     // Front Turn
     pub const F: CubieCube = CubieCube {
         cp: [1, 5, 2, 3, 0, 4, 6, 7],
         co: [1, 2, 0, 0, 2, 1, 0, 0],
         ep: [0, 9, 2, 3, 4, 8, 6, 7, 1, 5, 10, 11],
-        eo: [0, 1, 0, 0, 0, 1, 0, 0, 1, 1, 0, 0], // F/B moves flip edges
+        eo: [0, 1, 0, 0, 0, 1, 0, 0, 1, 1, 0, 0],
     };
 
     // Down Turn
@@ -128,7 +128,7 @@ impl CubieCube {
     pub const L: CubieCube = CubieCube {
         cp: [0, 2, 6, 3, 4, 1, 5, 7],
         co: [0, 1, 2, 0, 0, 2, 1, 0],
-        ep: [0, 1, 6, 3, 4, 5, 10, 7, 8, 2, 9, 11],
+        ep: [0, 1, 10, 3, 4, 5, 9, 7, 8, 2, 6, 11],
         eo: [0; 12],
     };
 
@@ -136,7 +136,7 @@ impl CubieCube {
     pub const B: CubieCube = CubieCube {
         cp: [0, 1, 3, 7, 4, 5, 2, 6],
         co: [0, 0, 1, 2, 0, 0, 2, 1],
-        ep: [0, 1, 2, 7, 4, 5, 6, 11, 8, 9, 3, 10],
+        ep: [0, 1, 2, 11, 4, 5, 6, 10, 8, 9, 3, 7],
         eo: [0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 1, 1],
     };
 }
@@ -201,7 +201,7 @@ impl CubieCube {
     pub fn get_twist(&self) -> u16 {
         let mut twist = 0;
         for i in 0..7 {
-            twist = 3 * twist + self.co[i] as u16;
+            twist = 3 * twist + (self.co[i] as u16);
         }
         twist
     }
@@ -211,7 +211,7 @@ impl CubieCube {
     pub fn get_flip(&self) -> u16 {
         let mut flip = 0;
         for i in 0..11 {
-            flip = 2 * flip + self.eo[i] as u16;
+            flip = 2 * flip + (self.eo[i] as u16);
         }
         flip
     }
@@ -321,7 +321,7 @@ impl CubieCube {
         for i in 0..7 {
             let mut count = 0;
             // Count how many pieces to the right are smaller
-            for j in (i + 1)..8 {
+            for j in i + 1..8 {
                 if val[j] < val[i] {
                     count += 1;
                 }
@@ -348,7 +348,7 @@ impl CubieCube {
         // Lehmer code for 4 items
         for i in 0..3 {
             let mut count = 0;
-            for j in (i + 1)..4 {
+            for j in i + 1..4 {
                 if val[j] < val[i] {
                     count += 1;
                 }
@@ -374,7 +374,7 @@ impl CubieCube {
         // Lehmer code for 8 items
         for i in 0..7 {
             let mut count = 0;
-            for j in (i + 1)..8 {
+            for j in i + 1..8 {
                 if val[j] < val[i] {
                     count += 1;
                 }
