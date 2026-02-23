@@ -11,28 +11,43 @@ impl<'a> Solver<'a> {
     pub fn new(tables: &'a PruningTables) -> Self {
         Self {
             tables,
-            max_length: 22, // Standard upper bound for Kociemba (20-22 is typical)
+            max_length: 22,
         }
     }
 
-    /// Returns a formatted solution string (e.g., "R U2 D' ...")
     pub fn solve(&mut self, cube: &CubieCube) -> Option<String> {
-        let mut solution = Vec::new();
+        let mut best_solution: Option<Vec<Turn>> = None;
+        let mut best_length = self.max_length + 1;
 
-        let mut depth = 0;
-        loop {
-            // "so_far" tracks moves in the current search stack
-            let mut so_far = Vec::new();
+        println!("--- Starting Two-Phase Search ---");
 
-            if self.phase1_search(cube, 0, depth, &mut so_far, &mut solution) {
-                return Some(self.format_solution(&solution));
+        // Phase 1 Iterative Deepening (0 to 12 moves)
+        for p1_bound in 0..=12 {
+            // THE FIX: Stop outer loop if Phase 1 alone is worse than our best total solve
+            if p1_bound >= best_length {
+                println!(
+                    "Phase 1 bound ({}) exceeded best length ({}). Search complete.",
+                    p1_bound,
+                    best_length
+                );
+                break;
             }
 
-            depth += 1;
-            if depth > self.max_length {
-                return None;
-            }
+            // MONITORING: Show the current search depth
+            println!("Searching Phase 1 Depth: {} (Current best: {})", p1_bound, if
+                best_length > 22
+            {
+                "None".to_string()
+            } else {
+                best_length.to_string()
+            });
+
+            let mut path = Vec::new();
+            self.phase1_search(cube, 0, p1_bound, &mut path, &mut best_solution, &mut best_length);
         }
+
+        println!("--- Search Finished ---");
+        best_solution.map(|s| self.format_solution(&s))
     }
 
     fn format_solution(&self, moves: &[Turn]) -> String {
@@ -46,115 +61,106 @@ impl<'a> Solver<'a> {
 
 impl<'a> Solver<'a> {
     fn phase1_search(
-        &mut self,
+        &self,
         cube: &CubieCube,
-        g: u8, // Cost so far (depth)
-        bound: u8, // Max allowed depth
-        path: &mut Vec<Turn>, // Current path
-        full_solution: &mut Vec<Turn> // Output storage
-    ) -> bool {
-        // Calculate Heuristic (h)
-        // How far are we from the G_1 subgroup?
+        g: u8,
+        p1_bound: u8,
+        path: &mut Vec<Turn>,
+        best_solution: &mut Option<Vec<Turn>>,
+        best_length: &mut u8
+    ) {
         let twist = cube.get_twist() as usize;
         let flip = cube.get_flip() as usize;
         let slice = cube.get_slice_sorted() as usize;
 
-        let dist_twist = self.tables.twist_slice_pruning.get(twist * 495 + slice);
-        let dist_flip = self.tables.flip_slice_pruning.get(flip * 495 + slice);
+        let h1 = std::cmp::max(
+            self.tables.twist_slice_pruning.get(twist * 495 + slice),
+            self.tables.flip_slice_pruning.get(flip * 495 + slice)
+        );
 
-        // Use the maximum of the two pruning tables
-        let h = std::cmp::max(dist_twist, dist_flip);
-
-        if g == 0 {
-            println!("Start Phase 1: Twist={}, Flip={}, Slice={}, h={}", twist, flip, slice, h);
+        // Standard Pruning and Global Bound Pruning
+        // If this branch mathematically cannot beat our best solution, kill it instantly.
+        if g + h1 > p1_bound || g + h1 >= *best_length {
+            return;
         }
 
-        // IDA* Pruning Condition
-        // f = g + h. If f > bound, this path is too long.
-        if g + h > bound {
-            return false;
-        }
+        // Reached the G1 subgroup at exactly the target Phase 1 depth
+        if h1 == 0 && g == p1_bound {
+            // Strictly limit Phase 2 to ensure we only find paths SHORTER than our best
+            let max_p2 = *best_length - g - 1;
 
-        // If h == 0, we are inside the G_1 subgroup
-        // Now we switch to Phase 2.
-        if h == 0 {
-            // We found a valid Phase 1 path. Now try to finish with Phase 2.
-            // Phase 2 starts with the cube applied with current path.
-            // We give it a generous bound (e.g., 10-12 moves) to finish.
+            for p2_bound in 0..=max_p2 {
+                let mut p2_path = path.clone();
+                if self.phase2_search(cube, 0, p2_bound, &mut p2_path) {
+                    let total_length = g + p2_bound;
 
-            let phase2_bound = bound - g;
-            if self.phase2_search(cube, 0, phase2_bound, path, full_solution) {
-                return true;
+                    if total_length < *best_length {
+                        *best_length = total_length;
+                        *best_solution = Some(p2_path.clone());
+
+                        println!(
+                            "  -> Found better solution! Length: {:02} | Moves: {}",
+                            total_length,
+                            self.format_solution(&p2_path)
+                        );
+                    }
+
+                    break;
+                }
             }
-
-            // If Phase 2 failed, we must backtrack and keep searching Phase 1
-            return false;
         }
 
-        // Branching
+        // Halt Phase 1 branching if we hit the Phase 1 depth limit
+        if g == p1_bound {
+            return;
+        }
+
         let last_move = path.last().cloned();
 
-        for m in Turn::ALL {
-            // Apply Redundancy Checks (Reduce to 13-branches)
+        for &m in Turn::ALL.iter() {
             if !crate::turn::is_move_allowed(m, last_move) {
                 continue;
             }
 
-            // Execute Turn
             let next_cube = cube.multiply(&m.to_cubie());
-
             path.push(m);
-            if self.phase1_search(&next_cube, g + 1, bound, path, full_solution) {
-                return true;
-            }
+            self.phase1_search(&next_cube, g + 1, p1_bound, path, best_solution, best_length);
             path.pop();
         }
-
-        false
     }
 
-    fn phase2_search(
-        &mut self,
-        cube: &CubieCube,
-        g: u8,
-        bound: u8,
-        path: &mut Vec<Turn>, // This path continues from Phase 1
-        full_solution: &mut Vec<Turn>
-    ) -> bool {
-        // Calculate Phase 2 Heuristic
+    fn phase2_search(&self, cube: &CubieCube, g: u8, p2_bound: u8, path: &mut Vec<Turn>) -> bool {
         let cp = cube.get_corner_perm();
         let ud = cube.get_ud_edges();
         let slice = cube.get_slice_perm();
 
-        let dist_cp = self.tables.corner_slice_pruning.get(cp * 24 + slice);
-        let dist_ud = self.tables.ud_edge_slice_pruning.get(ud * 24 + slice);
+        let h2 = std::cmp::max(
+            self.tables.corner_slice_pruning.get(cp * 24 + slice),
+            self.tables.ud_edge_slice_pruning.get(ud * 24 + slice)
+        );
 
-        let h = std::cmp::max(dist_cp, dist_ud);
-
-        if g + h > bound {
+        if g + h2 > p2_bound {
             return false;
         }
 
-        // If h == 0 (and checking raw state ensures no collisions), found path
-        if cp == 0 && ud == 0 && slice == 0 {
-            // Solution Found
-            *full_solution = path.clone();
-            return true;
+        if h2 == 0 && cp == 0 && ud == 0 && slice == 0 {
+            return g == p2_bound;
+        }
+
+        if g == p2_bound {
+            return false;
         }
 
         let last_move = path.last().cloned();
 
-        // 3. Branching (G1 Moves Only)
-        // U, U2, U3, D, D2, D3, R2, L2, F2, B2
         for &m in Turn::PHASE2_MOVES.iter() {
             if !crate::turn::is_move_allowed(m, last_move) {
                 continue;
             }
 
             let next_cube = cube.multiply(&m.to_cubie());
-
             path.push(m);
-            if self.phase2_search(&next_cube, g + 1, bound, path, full_solution) {
+            if self.phase2_search(&next_cube, g + 1, p2_bound, path) {
                 return true;
             }
             path.pop();

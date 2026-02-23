@@ -1,5 +1,3 @@
-use crate::{ turn::Turn, turn::is_move_allowed };
-
 use rand::seq::IndexedRandom;
 
 // Precomputed Binomial Coefficients (n choose k) for the Slice coordinate
@@ -229,21 +227,17 @@ impl CubieCube {
     /// among the 12 edge positions.
     pub fn get_slice_sorted(&self) -> u16 {
         let mut idx = 0;
-        let mut k = 3; // We are looking for 4 edges (indices 8,9,10,11 in standard notation)
-        let mut n = 11;
+        let mut k = 4;
 
         // Scan edges from right to left (11 down to 0)
-        while k >= 0 && n > 0 {
-            // n=0 case handled by loop termination
-            // Check if the edge at position n is a "slice edge".
-            // In standard notation, slice edges are indices 8, 9, 10, 11.
+        for n in (0..12).rev() {
             if self.ep[n] >= 8 {
-                // If we found a slice edge, we add C(n, k) to the index
-                // and look for the next slice edge (k-1)
-                idx += C_NK[n][k as usize];
+                idx += C_NK[n][k];
                 k -= 1;
+                if k == 0 {
+                    break;
+                }
             }
-            n -= 1;
         }
         idx
     }
